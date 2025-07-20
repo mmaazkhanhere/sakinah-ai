@@ -16,3 +16,11 @@ dependencies = [
     "python-dotenv>=1.1.1",
     "uvicorn>=0.35.0",
 ]
+
+[dependency-groups]
+dev = [
+    "sakinah-ai",
+]
+
+[tool.uv.sources]
+sakinah-ai = { workspace = true }

@@ -1530,6 +1530,11 @@ dependencies = [
     { name = "uvicorn" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "sakinah-ai" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "colorama", specifier = ">=0.4.6" },
@@ -1543,6 +1548,9 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "uvicorn", specifier = ">=0.35.0" },
 ]
+
+[package.metadata.requires-dev]
+dev = [{ name = "sakinah-ai", virtual = "." }]
 
 [[package]]
 name = "six"
