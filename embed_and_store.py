@@ -2,10 +2,12 @@ import os
 import time
 import uuid
 import pinecone
+
 from pinecone import ServerlessSpec
 from dotenv import load_dotenv
 from typing import List, Optional, Dict
 from colorama import Fore, Style
+
 from langchain_openai import OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
 
