@@ -1,17 +1,23 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
 
-class UserQuery(BaseModel):
-    query: str
+from src.agent.agent import agent
+from src.agent.schema import AgentState
 
 app: FastAPI = FastAPI()
 
+state: AgentState = {
+    "user_message": "",
+    "chat_history": [],
+    "context": [],
+    "answer": ""
+}
 
 @app.get('/')
 def root_message():
     return {"message": "Sakinah Backend System running"}
 
 @app.post('/query')
-async def user_query(query: UserQuery):
-    # pass the user query to langgraph agent
-    return {"response": "This is a placeholder response for the user query: " + query.query}
+async def user_query(query: str):
+    state["user_message"] = query
+    response = agent(state)
+    return response
