@@ -7,7 +7,7 @@ from langchain_openai import OpenAIEmbeddings
 
 load_dotenv()
 
-def retrieve_from_rag(user_query: str, index_name: str, top_k: int = 3) -> list[str]:
+def retrieve_from_rag(user_query: str, index_name: str, top_k: int = 3, namespace: str = "") -> list[str]:
     """
     Retrieve relevant documents from pinecone vector store based on user query
 
@@ -31,8 +31,8 @@ def retrieve_from_rag(user_query: str, index_name: str, top_k: int = 3) -> list[
     )
 
 
-    results = vector_store.similarity_search(query=user_query, k=top_k)
+    results = vector_store.similarity_search(query=user_query, k=top_k, namespace=namespace)
 
     return [doc.page_content for doc in results]
 
-#print(retrieve_from_rag("What is the meaning of life?", "sakinah-app"))
+print(retrieve_from_rag("What is the meaning of life?", "sakinah-app", namespace="hadith"))
