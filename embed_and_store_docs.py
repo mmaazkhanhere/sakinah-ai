@@ -15,7 +15,7 @@ from pdf_chunking import chunk_hadiths_with_metadata
 load_dotenv()
 
 def embed_and_store(
-    chunks: List[str], 
+    documents, 
     index_name: str, 
     namespace: Optional[str] = None, 
     batch_size: int = 100,
@@ -91,7 +91,7 @@ def embed_and_store(
 
     # Embed and store documents with progress tracking
     stats = {
-        "total_chunks": len(chunks),
+        "total_chunks": len(documents),
         "batches_processed": 0,
         "vectors_stored": 0,
         "start_time": time.time(),
@@ -103,24 +103,26 @@ def embed_and_store(
     print(f"{Fore.CYAN}├── Estimated batches: {(stats['total_chunks'] + batch_size - 1) // batch_size}")
     
     try:
-        # Get the Pinecone index
         index = pc.Index(index_name)
+        embeddings = OpenAIEmbeddings(model=embedding_model)
         
-        # Process in batches with progress tracking
         for i in range(0, stats["total_chunks"], batch_size):
-            batch_chunks = chunks[i:i+batch_size]
+            batch_docs = documents[i:i+batch_size]
+            batch_texts = [doc.page_content for doc in batch_docs]  # Extract text content
             
-            # Embed the batch
-            batch_vectors = embeddings.embed_documents(batch_chunks)
+            # Embed the text content
+            batch_vectors = embeddings.embed_documents(batch_texts)
             
-            # Prepare vectors for upsert
             vectors = []
-            for j, (text, vector) in enumerate(zip(batch_chunks, batch_vectors)):
-                metadata = {text_key: text}
+            for doc, vector in zip(batch_docs, batch_vectors):
+                # Create metadata with both custom metadata and text content
+                metadata = {
+                    **doc.metadata,  # Original metadata (volume, book, etc.)
+                    text_key: doc.page_content  # Include text content in metadata
+                }
                 vector_id = f"{index_name}-{uuid.uuid4().hex}"
                 vectors.append((vector_id, vector, metadata))
             
-            # Upsert to Pinecone
             index.upsert(vectors=vectors, namespace=namespace)
             
             # Update stats

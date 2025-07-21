@@ -104,33 +104,33 @@ def chunk_hadiths_with_metadata(pdf_path):
 
     return hadith_chunks
 
-pdf_path = "data/sahih_bukhari.pdf" 
+# pdf_path = "data/sahih_bukhari.pdf" 
 
 
-try:
-    chunks = chunk_hadiths_with_metadata(pdf_path)
+# try:
+#     chunks = chunk_hadiths_with_metadata(pdf_path)
 
-    if chunks:
-        print(f"{Fore.BLUE}\n--- First Chunk ---")
-        print(f"{Fore.BLUE}Content:\n{chunks[0].page_content}\n")
-        print(f"{Fore.BLUE}Metadata: {chunks[0].metadata}\n")
+#     if chunks:
+#         print(f"{Fore.BLUE}\n--- First Chunk ---")
+#         print(f"{Fore.BLUE}Content:\n{chunks[0].page_content}\n")
+#         print(f"{Fore.BLUE}Metadata: {chunks[0].metadata}\n")
         
-        if len(chunks) > 1:
-            print(f"{Fore.WHITE}--- Second Chunk ---")
-            print(f"{Fore.WHITE}Content:\n{chunks[1].page_content}\n")
-            print(f"{Fore.WHITE}Metadata: {chunks[1].metadata}\n")
+#         if len(chunks) > 1:
+#             print(f"{Fore.WHITE}--- Second Chunk ---")
+#             print(f"{Fore.WHITE}Content:\n{chunks[1].page_content}\n")
+#             print(f"{Fore.WHITE}Metadata: {chunks[1].metadata}\n")
 
-        if len(chunks) > 2:
-            print(f"{Fore.LIGHTRED_EX}--- Third Chunk ---")
-            print(f"{Fore.LIGHTRED_EX}Content:\n{chunks[2].page_content}\n")
-            print(f"{Fore.LIGHTRED_EX}Metadata: {chunks[2].metadata}\n")
+#         if len(chunks) > 2:
+#             print(f"{Fore.LIGHTRED_EX}--- Third Chunk ---")
+#             print(f"{Fore.LIGHTRED_EX}Content:\n{chunks[2].page_content}\n")
+#             print(f"{Fore.LIGHTRED_EX}Metadata: {chunks[2].metadata}\n")
 
-        print(f"{Fore.LIGHTBLUE_EX}--- Last Chunk ---")
-        print(f"{Fore.LIGHTBLUE_EX}Content:\n{chunks[-1].page_content}\n")
-        print(f"{Fore.LIGHTBLUE_EX}Metadata: {chunks[-1].metadata}\n")
-    else:
-        print("{Fore.RED}No hadith chunks were generated. Please check the PDF content and patterns.")
+#         print(f"{Fore.LIGHTBLUE_EX}--- Last Chunk ---")
+#         print(f"{Fore.LIGHTBLUE_EX}Content:\n{chunks[-1].page_content}\n")
+#         print(f"{Fore.LIGHTBLUE_EX}Metadata: {chunks[-1].metadata}\n")
+#     else:
+#         print("{Fore.RED}No hadith chunks were generated. Please check the PDF content and patterns.")
 
-except Exception as e:
-    print(f"\n{Fore.RED}An error occurred: {e}")
-    print(f"{Fore.RED}Please ensure that path_pdf points to the correct PDF file and that you have the necessary libraries installed (e.g., `langchain-community`, `pypdf`).")
+# except Exception as e:
+#     print(f"\n{Fore.RED}An error occurred: {e}")
+#     print(f"{Fore.RED}Please ensure that path_pdf points to the correct PDF file and that you have the necessary libraries installed (e.g., `langchain-community`, `pypdf`).")
