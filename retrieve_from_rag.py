@@ -35,4 +35,4 @@ def retrieve_from_rag(user_query: str, index_name: str, top_k: int = 3, namespac
 
     return [doc.page_content for doc in results]
 
-print(retrieve_from_rag("What is the meaning of life?", "sakinah-app", namespace="hadith"))
+print(retrieve_from_rag("What is the meaning of life?", "sakinah-app"))
