@@ -26,6 +26,7 @@ class AgentResponse(BaseModel):
 
 class AgentState(TypedDict):
     user_message: str  #the message entered by the user
-    context: list[str] # context the is  built using rag
+    quran_data: list[QuranAyah]
+    hadith_data: list[Hadith]
     chat_history: list[Dict[str, str]] # history of chat between the agent and the user
     response: AgentResponse # generated the answer by the LLM
