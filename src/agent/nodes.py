@@ -177,9 +177,8 @@ def generate_response(state: AgentState):
     logging.info(f"{Fore.GREEN}Response generated: {response}{Style.RESET_ALL}")
     # logging.info(f"\n\n{Fore.GREEN}Answer generated: {response}{Style.RESET_ALL}")
     # Update state
-    agent_response = state["response"]
-    agent_response = response
+    state["response"] = response
     state["chat_history"].append({"role": "user", "content": user_message})
-    state["chat_history"].append({"role": "AI", "content": response.answer})
+    state["chat_history"].append({"role": "AI", "content": state["response"].answer})
     
     return state
