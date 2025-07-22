@@ -1,4 +1,5 @@
 import os
+import re
 import logging
 import pinecone
 from colorama import Fore, Style, Back
@@ -40,32 +41,42 @@ def parse_quran_ayah(data: str) -> QuranAyah:
         ayah_arabic=metadata.get('ayah_ar', '')
     )
 
-def parse_hadith(data: str) -> Hadith:
-    header, _, body = data.partition('\n')
-    narrator = ""
-    hadith_text = body.strip()
+def parse_hadith(hadith_str: str):
+    """Parse a raw hadith string into structured Hadith format
+    focusing on Sahih Bukhari and Sahih Muslim"""
+    # Filter for authentic sources
+    if "SAHIH BUKHARI" not in hadith_str and "SAHIH MUSLIM" not in hadith_str:
+        return None
     
-    # Extract hadith number and book reference
-    hadith_number = 0
-    book_ref = ""
-    if 'Number' in header:
-        num_start = header.find('Number') + 6
-        num_end = header.find(':', num_start)
-        if num_end == -1:
-            num_end = len(header)
-        hadith_number = int(''.join(filter(str.isdigit, header[num_start:num_end])))
-        book_ref = header.split(':')[0].replace(f'Number {hadith_number}', '').strip()
+    # Extract hadith number
+    number_match = re.search(r'Number (\d+):', hadith_str)
+    hadith_number = int(number_match.group(1)) if number_match else 0
     
     # Extract narrator
-    if body.startswith('Narrated'):
-        narrator_line = body.split('\n')[0]
-        narrator = narrator_line.replace('Narrated', '').strip()
+    narrator_match = re.search(r'Narrated (.*?)\n', hadith_str)
+    narrator = narrator_match.group(1).strip() if narrator_match else ""
+    
+    # Extract book reference
+    book_ref_match = re.search(r'(SAHIH (BUKHARI|MUSLIM).*?)$', hadith_str, re.MULTILINE)
+    book_reference = book_ref_match.group(0).strip() if book_ref_match else ""
+    
+    # Extract hadith text
+    content_start = 0
+    if narrator_match:
+        content_start = narrator_match.end()
+    content_end = book_ref_match.start() if book_ref_match else len(hadith_str)
+    
+    hadith_text = hadith_str[content_start:content_end].strip()
+    
+    # Clean common prefixes
+    hadith_text = re.sub(r'^Narrated .*?\n', '', hadith_text)
+    hadith_text = re.sub(r'^that ', '', hadith_text, flags=re.IGNORECASE)
     
     return Hadith(
         hadith=hadith_text,
         hadith_number=hadith_number,
         narrator=narrator,
-        book_reference=book_ref
+        book_reference=book_reference
     )
 
 
@@ -84,7 +95,7 @@ def retrieve_quran_data(state: AgentState):
         namespace="quran"
     )
 
-    results = vector_store.similarity_search(query=state["user_message"], k=5)
+    results = vector_store.similarity_search(query=state["user_message"], k=3)
 
     parsed_ayahs = [parse_quran_ayah(doc.page_content) for doc in results]
     state["quran_data"] = parsed_ayahs
@@ -109,13 +120,15 @@ def retrieve_hadith_data(state: AgentState):
         namespace="hadith"
     )
 
-    results = vector_store.similarity_search(query=state["user_message"], k=5)
+    results = vector_store.similarity_search(query=state["user_message"], k=3)
 
-    parsed_hadiths = [parse_hadith(doc.page_content) for doc in results]
-    state["hadith_data"] = parsed_hadiths
+    context = [doc.page_content for doc in results]
 
+    logging.info(f"{Fore.CYAN}Retrieved Hadith Data: {context}{Style.RESET_ALL}")
 
-    logging.info(f"{Fore.GREEN}Retrieved Data: {parsed_hadiths}{Style.RESET_ALL}")
+    state["hadith_data"] = context
+
+    
 
     return state
 
