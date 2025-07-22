@@ -1,39 +1,20 @@
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
 import re
-from colorama import init, Fore, Style
+from colorama import Fore, Style
+import logging
 
-# Initialize colorama for colored console output
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 def chunk_hadith_sahi_muslim_pdf(pdf_path):
-    """
-    Load a PDF document, identify individual hadith entries, and chunk them
-    along with their associated metadata (Book and Number).
-
-    This function assumes a specific pattern for hadith entries,
-    e.g., "Book XXX, Number YYYY:" at the beginning of a hadith.
-
-    Args:
-        pdf_path (str): Path to the PDF file.
-
-    Returns:
-        List[Document]: List of document chunks, where each chunk represents
-                        a hadith with its text and extracted metadata.
-    """
-    print(Fore.YELLOW + f"\n{'='*50}")
-    print(Fore.CYAN + Style.BRIGHT + "🚀 Starting Hadith PDF Processing Pipeline")
-    print(Fore.YELLOW + f"{'='*50}")
-    print(Fore.LIGHTBLUE_EX + f"📄 Source PDF: {pdf_path}")
-    print(Fore.YELLOW + "❗ Note: This script assumes hadith are marked by 'Book XXX, Number YYYY:' pattern.")
-    print(Fore.YELLOW + "❗ Adjust `hadith_start_pattern` if your PDF's format differs.\n")
-
-    print(Fore.MAGENTA + "⏳ Loading PDF document...")
+    logging.info(Fore.BLUE + f"Loading PDF from path: {pdf_path}" + Style.RESET_ALL)
     try:
         loader = PyPDFLoader(pdf_path)
         pages = loader.load()
-        print(Fore.GREEN + f"✅ Successfully loaded {len(pages)} pages\n")
+        logging.info(Fore.GREEN + "PDF loaded successfully." + Style.RESET_ALL)
     except Exception as e:
-        print(Fore.RED + f"❌ Error loading PDF: {e}")
+        logging.error(Fore.RED + f"Error loading PDF: {e}" + Style.RESET_ALL)
         return []
 
     processed_hadith_chunks = []
@@ -41,25 +22,33 @@ def chunk_hadith_sahi_muslim_pdf(pdf_path):
     current_hadith_metadata = {}
     hadith_counter = 0
 
+    logging.info(Fore.BLUE + "Starting to process pages..." + Style.RESET_ALL)
 
     hadith_start_pattern = re.compile(
         r'Book (\d+), Number (\d+):',
-        re.IGNORECASE
+        re.IGNORECASE | re.DOTALL
     )
+    
     # A more general pattern for chapter/book titles if needed for context
     section_title_pattern = re.compile(
         r'^(SAHIH MUSLIM BOOK \d+: THE BOOK|Chapter \d+: Pertaining to the verse:).+$',
         re.IGNORECASE | re.MULTILINE
     )
-    current_section_title = "Introduction" # Default section
 
-    print(Fore.MAGENTA + "🔍 Starting hadith extraction and chunking...\n")
+    # Regex to find narrator at the beginning of a hadith text
+    # This pattern looks for common phrases followed by a name or names (capitalized words)
+    # It tries to be flexible by matching various introductory phrases.
+    narrator_pattern = re.compile(
+        r'(?:It is narrated (?:on the authority of|from)|reported (?:on the authority of|from)|On the authority of)\s+([A-Z][a-zA-Z\s\'-]+(?: and [A-Z][a-zA-Z\s\'-]+)*)(?:,| that| said| narrated| reported| observed| that he)',
+        re.IGNORECASE
+    )
+    
+    current_section_title = "Introduction" # Default section
 
     for page_idx, page in enumerate(pages, 1):
         content = page.page_content
         page_num = page.metadata.get('page', page_idx - 1) + 1 # Adjust for 0-indexed pages
-
-        print(Fore.LIGHTBLUE_EX + f"\n📖 Processing Page {page_num}/{len(pages)}...")
+        logging.info(Fore.YELLOW + f"Processing page {page_num}" + Style.RESET_ALL)
 
         lines = content.split('\n')
         for line_idx, line in enumerate(lines):
@@ -67,7 +56,7 @@ def chunk_hadith_sahi_muslim_pdf(pdf_path):
             section_match = section_title_pattern.match(line.strip())
             if section_match:
                 current_section_title = line.strip()
-                print(Fore.CYAN + f"  🆕 Section Title Detected: '{current_section_title}'")
+                logging.info(Fore.CYAN + f"Found section title: {current_section_title}" + Style.RESET_ALL)
                 continue # Don't treat section titles as hadith starts
 
             hadith_match = hadith_start_pattern.match(line.strip())
@@ -78,14 +67,22 @@ def chunk_hadith_sahi_muslim_pdf(pdf_path):
                 if current_hadith_text:
                     hadith_content = "\n".join(current_hadith_text).strip()
                     if hadith_content: # Ensure content is not empty
-                        # Add current section title to hadith metadata
+                        # Extract narrator from the collected hadith text
+                        narrator = "Unknown"
+                        narrator_match = narrator_pattern.search(hadith_content)
+                        if narrator_match:
+                            narrator = narrator_match.group(1).strip()
+                        
                         current_hadith_metadata['section_title'] = current_section_title
                         current_hadith_metadata['source_page'] = current_hadith_metadata.get('source_page', 'Unknown') # Ensure page is recorded
+                        current_hadith_metadata['narrator'] = narrator
+                        current_hadith_metadata['book_name'] = "Sahih Muslim" # Explicitly set book name
+
                         processed_hadith_chunks.append(
                             Document(page_content=hadith_content, metadata=current_hadith_metadata)
                         )
                         hadith_counter += 1
-                        print(Fore.GREEN + f"    ✅ Hadith {current_hadith_metadata.get('book_number', '')}-{current_hadith_metadata.get('hadith_number', '')} extracted (Length: {len(hadith_content)})")
+                        logging.info(Fore.GREEN + f"Processed Hadith {hadith_counter}: {current_hadith_metadata['full_source']}" + Style.RESET_ALL)
 
                 # Start collecting the new hadith
                 book_num = hadith_match.group(1)
@@ -97,8 +94,8 @@ def chunk_hadith_sahi_muslim_pdf(pdf_path):
                     'source_page': page_num,
                     'full_source': f"Book {book_num}, Hadith {hadith_num} (Page {page_num})"
                 }
+                logging.info(Fore.CYAN + f"Started new Hadith: {current_hadith_metadata['full_source']}" + Style.RESET_ALL)
             else:
-
                 if current_hadith_text:
                     current_hadith_text.append(line.strip())
 
@@ -106,36 +103,44 @@ def chunk_hadith_sahi_muslim_pdf(pdf_path):
     if current_hadith_text:
         hadith_content = "\n".join(current_hadith_text).strip()
         if hadith_content:
+            narrator = "Unknown"
+            narrator_match = narrator_pattern.search(hadith_content)
+            if narrator_match:
+                narrator = narrator_match.group(1).strip()
+
             current_hadith_metadata['section_title'] = current_section_title
             current_hadith_metadata['source_page'] = current_hadith_metadata.get('source_page', 'Unknown')
+            current_hadith_metadata['narrator'] = narrator
+            current_hadith_metadata['book_name'] = "Sahih Muslim"
+
             processed_hadith_chunks.append(
                 Document(page_content=hadith_content, metadata=current_hadith_metadata)
             )
             hadith_counter += 1
-            print(Fore.GREEN + f"    ✅ Final Hadith {current_hadith_metadata.get('book_number', '')}-{current_hadith_metadata.get('hadith_number', '')} extracted (Length: {len(hadith_content)})")
+            logging.info(Fore.GREEN + f"Processed final Hadith {hadith_counter}: {current_hadith_metadata['full_source']}" + Style.RESET_ALL)
 
-
-    # Print final summary
-    print(Fore.YELLOW + f"\n{'='*50}")
-    print(Fore.CYAN + Style.BRIGHT + "🏁 Hadith Extraction Complete!")
-    print(Fore.YELLOW + f"{'='*50}")
-    print(Fore.GREEN + f"📊 Total Pages Processed: {len(pages)}")
-    print(Fore.GREEN + f"📊 Total Hadith Chunks Generated: {hadith_counter}")
-    print(Fore.LIGHTBLUE_EX + "\n✨ Hadith are ready for further processing!\n")
-
+    logging.info(Fore.BLUE + f"Total Hadith Chunks Generated: {len(processed_hadith_chunks)}" + Style.RESET_ALL)
     return processed_hadith_chunks
 
-pdf_path = "data/sahih_muslim.pdf" # Assuming the uploaded PDF is named this way
+pdf_path = "data/sahih_muslim.pdf" 
 chunks = chunk_hadith_sahi_muslim_pdf(pdf_path)
 
 if chunks:
-    print(Fore.GREEN + f"\nFirst Hadith Chunk:\n{chunks[0].page_content}\nMetadata: {chunks[0].metadata}\n")
+    print(f"Total Hadith Chunks Generated: {len(chunks)}\n")
+    print("First Hadith Chunk:")
+    print(f"Content: {chunks[0].page_content}")
+    print(f"Metadata: {chunks[0].metadata}\n")
     if len(chunks) > 1:
-        print(Fore.YELLOW + f"\nSecond Hadith Chunk:\n{chunks[1].page_content}\nMetadata: {chunks[1].metadata}\n")
+        print("Second Hadith Chunk:")
+        print(f"Content: {chunks[1].page_content}")
+        print(f"Metadata: {chunks[1].metadata}\n")
     if len(chunks) > 2:
-        print(Fore.MAGENTA + f"\nThird Hadith Chunk:\n{chunks[2].page_content}\nMetadata: {chunks[2].metadata}\n")
+        print("Third Hadith Chunk:")
+        print(f"Content: {chunks[2].page_content}")
+        print(f"Metadata: {chunks[2].metadata}\n")
     if len(chunks) > 0:
-        print(Fore.CYAN + f"\nLast Hadith Chunk:\n{chunks[-1].page_content}\nMetadata: {chunks[-1].metadata}\n")
+        print("Last Hadith Chunk:")
+        print(f"Content: {chunks[-1].page_content}")
+        print(f"Metadata: {chunks[-1].metadata}\n")
 else:
-    print(Fore.RED + "No hadith chunks were generated. Please check the PDF path and content patterns.")
-
+    print("No hadith chunks were generated. Please check the PDF path and content patterns.")

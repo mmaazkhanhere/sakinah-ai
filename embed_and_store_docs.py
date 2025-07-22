@@ -10,7 +10,9 @@ from colorama import Fore, Style
 
 from langchain_openai import OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
-from pdf_chunking import chunk_hadiths_with_metadata
+
+from sahih_bukhari_chunking import chunk_hadiths_with_metadata
+from sahih_muslim_chunking import chunk_hadith_sahi_muslim_pdf
 
 load_dotenv()
 
@@ -169,8 +171,8 @@ def embed_and_store(
         raise
 
 chunks_bukhari = chunk_hadiths_with_metadata("data/sahih_bukhari.pdf")
-#chunks_muslim = chunk_hadiths_with_metadata("data/sahih_muslim.pdf")
+chunks_muslim = chunk_hadith_sahi_muslim_pdf("data/sahih_muslim.pdf")
 
-#merged_chunks = chunks_bukhari + chunks_muslim
+merged_chunks = chunks_bukhari + chunks_muslim
 
 embed_and_store(chunks_bukhari, index_name="sakinah-app", namespace="hadith")

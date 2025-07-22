@@ -10,7 +10,8 @@ from colorama import Fore, Style
 
 from langchain_openai import OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
-from pdf_chunking import chunk_hadiths_with_metadata
+# from sahih_bukhari_chunking import chunk_hadiths_with_metadata
+from create_ayah_chunks import create_ayah_chunks
 
 load_dotenv()
 
@@ -166,9 +167,6 @@ def embed_and_store(
         print(f"{Fore.YELLOW}⚠ Successfully stored {stats['vectors_stored']} vectors before failure")
         raise
 
-chunks_bukhari = chunk_hadiths_with_metadata("data/sahih_bukhari.pdf")
-#chunks_muslim = chunk_hadiths_with_metadata("data/sahih_muslim.pdf")
 
-#merged_chunks = chunks_bukhari + chunks_muslim
-
-embed_and_store(chunks_bukhari, index_name="sakinah-app", namespace="hadith")
+quran_chunks = create_ayah_chunks("data/quran.csv")
+embed_and_store(quran_chunks, index_name="sakinah-app", namespace="quran")

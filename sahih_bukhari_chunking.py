@@ -47,8 +47,8 @@ def chunk_hadiths_with_metadata(pdf_path):
     for page_idx, page in enumerate(pages, 1):
         lines = page.page_content.split('\n')
         
-        book_name_match = re.search(r"Book \d+: (.+)", page.page_content)
-        current_book_name = book_name_match.group(1).strip() if book_name_match else "Unknown Book"
+        # Set book_name directly to "Sahih Bukhari" as requested
+        current_book_name = "Sahih Bukhari"
 
 
         for i, line in enumerate(lines):
@@ -63,7 +63,7 @@ def chunk_hadiths_with_metadata(pdf_path):
                             metadata=current_hadith_metadata
                         )
                     )
-                    print(f"{Fore.GREEN}Chunked Hadith: Volume {current_hadith_metadata.get('volume', '')}, Book {current_hadith_metadata.get('book_number', '')}, Hadith {current_hadith_metadata.get('hadith_number', '')}")
+                    print(f"{Fore.GREEN}Chunked Hadith: Volume {current_hadith_metadata.get('volume', '')}, Book {current_hadith_metadata.get('book_number', '')}, Hadith {current_hadith_metadata.get('hadith_number', '')}, Narrator: {current_hadith_metadata.get('narrator', '')}, Book Name: {current_hadith_metadata.get('book_name', '')}")
 
                 # Start new hadith
                 current_hadith_metadata = {
@@ -93,44 +93,44 @@ def chunk_hadiths_with_metadata(pdf_path):
                 metadata=current_hadith_metadata
             )
         )
-        print(f"{Fore.GREEN}Chunked Hadith: Volume {current_hadith_metadata.get('volume', '')}, Book {current_hadith_metadata.get('book_number', '')}, Hadith {current_hadith_metadata.get('hadith_number', '')}")
+        print(f"{Fore.GREEN}Chunked Hadith: Volume {current_hadith_metadata.get('volume', '')}, Book {current_hadith_metadata.get('book_number', '')}, Hadith {current_hadith_metadata.get('hadith_number', '')}, Narrator: {current_hadith_metadata.get('narrator', '')}, Book Name: {current_hadith_metadata.get('book_name', '')}")
 
 
-    print(f"{Fore.MAGENTA}\n{'='*50}")
-    print(f"{Fore.MAGENTA}Processing Complete!")
-    print(f"{Fore.MAGENTA}{'='*50}")
-    print(f"{Fore.MAGENTA}Total Hadith Chunks Generated: {len(hadith_chunks)}")
-    print(f"\n✨{Fore.MAGENTA} Hadiths chunked and metadata extracted!\n")
+    print(f"{Fore.MAGENTA}\n{'='*50}{Style.RESET_ALL}")
+    print(f"{Fore.MAGENTA}Processing Complete!{Style.RESET_ALL}")
+    print(f"{Fore.MAGENTA}{'='*50}{Style.RESET_ALL}")
+    print(f"{Fore.MAGENTA}Total Hadith Chunks Generated: {len(hadith_chunks)}{Style.RESET_ALL}")
+    print(f"\n✨{Fore.MAGENTA} Hadiths chunked and metadata extracted!\n{Style.RESET_ALL}")
 
     return hadith_chunks
 
-# pdf_path = "data/sahih_bukhari.pdf" 
+pdf_path = "data/sahih_bukhari.pdf" 
 
 
-# try:
-#     chunks = chunk_hadiths_with_metadata(pdf_path)
+try:
+    chunks = chunk_hadiths_with_metadata(pdf_path)
 
-#     if chunks:
-#         print(f"{Fore.BLUE}\n--- First Chunk ---")
-#         print(f"{Fore.BLUE}Content:\n{chunks[0].page_content}\n")
-#         print(f"{Fore.BLUE}Metadata: {chunks[0].metadata}\n")
+    if chunks:
+        print(f"{Fore.BLUE}\n--- First Chunk ---")
+        print(f"{Fore.BLUE}Content:\n{chunks[0].page_content}\n{Style.RESET_ALL}")
+        print(f"{Fore.BLUE}Metadata: {chunks[0].metadata}\n{Style.RESET_ALL}")
         
-#         if len(chunks) > 1:
-#             print(f"{Fore.WHITE}--- Second Chunk ---")
-#             print(f"{Fore.WHITE}Content:\n{chunks[1].page_content}\n")
-#             print(f"{Fore.WHITE}Metadata: {chunks[1].metadata}\n")
+        if len(chunks) > 1:
+            print(f"{Fore.WHITE}--- Second Chunk ---{Style.RESET_ALL}")
+            print(f"{Fore.WHITE}Content:\n{chunks[1].page_content}\n{Style.RESET_ALL}")
+            print(f"{Fore.WHITE}Metadata: {chunks[1].metadata}\n{Style.RESET_ALL}")
 
-#         if len(chunks) > 2:
-#             print(f"{Fore.LIGHTRED_EX}--- Third Chunk ---")
-#             print(f"{Fore.LIGHTRED_EX}Content:\n{chunks[2].page_content}\n")
-#             print(f"{Fore.LIGHTRED_EX}Metadata: {chunks[2].metadata}\n")
+        if len(chunks) > 2:
+            print(f"{Fore.LIGHTRED_EX}--- Third Chunk ---{Style.RESET_ALL}")
+            print(f"{Fore.LIGHTRED_EX}Content:\n{chunks[2].page_content}\n{Style.RESET_ALL}")
+            print(f"{Fore.LIGHTRED_EX}Metadata: {chunks[2].metadata}\n{Style.RESET_ALL}")
 
-#         print(f"{Fore.LIGHTBLUE_EX}--- Last Chunk ---")
-#         print(f"{Fore.LIGHTBLUE_EX}Content:\n{chunks[-1].page_content}\n")
-#         print(f"{Fore.LIGHTBLUE_EX}Metadata: {chunks[-1].metadata}\n")
-#     else:
-#         print("{Fore.RED}No hadith chunks were generated. Please check the PDF content and patterns.")
+        print(f"{Fore.LIGHTBLUE_EX}--- Last Chunk ---")
+        print(f"{Fore.LIGHTBLUE_EX}Content:\n{chunks[-1].page_content}\n{Style.RESET_ALL}")
+        print(f"{Fore.LIGHTBLUE_EX}Metadata: {chunks[-1].metadata}\n{Style.RESET_ALL}")
+    else:
+        print(f"{Fore.RED}No hadith chunks were generated. Please check the PDF content and patterns.{Style.RESET_ALL}")
 
-# except Exception as e:
-#     print(f"\n{Fore.RED}An error occurred: {e}")
-#     print(f"{Fore.RED}Please ensure that path_pdf points to the correct PDF file and that you have the necessary libraries installed (e.g., `langchain-community`, `pypdf`).")
+except Exception as e:
+    print(f"\n{Fore.RED}An error occurred: {e}")
+    print(f"{Fore.RED}Please ensure that path_pdf points to the correct PDF file and that you have the necessary libraries installed (e.g., `langchain-community`, `pypdf`).")
