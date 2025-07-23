@@ -12,7 +12,8 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 
-from src.agent.schema import AgentState, QuranAyah, Hadith, AgentResponse
+from src.agent.schema import AgentState, QuranAyah, Hadith, AgentResponse, RequireRetrieval
+from .helper_functions import parse_hadith, parse_quran_ayah
 
 load_dotenv()
 
@@ -21,63 +22,47 @@ logging.basicConfig(
     format=f'{Fore.BLUE}%(asctime)s{Style.RESET_ALL} - {Fore.GREEN}%(levelname)s{Style.RESET_ALL} - %(message)s'
 )
 
-def parse_quran_ayah(data: str) -> QuranAyah:
-    lines = data.split('\n')
-    metadata = {}
-    for line in lines:
-        if ':' in line:
-            key, value = line.split(':', 1)
-            key = key.strip()
-            value = value.strip()
-            metadata[key] = value
-        elif not line.strip():
-            break
-    
-    return QuranAyah(
-        surah_no=int(metadata.get('surah_no', 0)),
-        surah_name=metadata.get('surah_name_en', ''),
-        ayah_no_surah=int(metadata.get('ayah_no_surah', 0)),
-        ayah_eng=metadata.get('ayah_en', ''),
-        ayah_arabic=metadata.get('ayah_ar', '')
+def required_retrieval(state: AgentState):
+    logging.info(f"{Back.BLUE} Required Retrieval Node {Style.RESET_ALL}")
+    logging.info(f"{Fore.YELLOW}User Message: {state['user_message']}{Style.RESET_ALL}")
+
+    llm: ChatOpenAI = ChatOpenAI(
+        model="gpt-4o",
+        temperature=0.4,  # Slightly higher for more empathetic responses
+        verbose=True,
     )
 
-def parse_hadith(hadith_str: str):
-    """Parse a raw hadith string into structured Hadith format
-    focusing on Sahih Bukhari and Sahih Muslim"""
-    # Filter for authentic sources
-    if "SAHIH BUKHARI" not in hadith_str and "SAHIH MUSLIM" not in hadith_str:
-        return None
-    
-    # Extract hadith number
-    number_match = re.search(r'Number (\d+):', hadith_str)
-    hadith_number = int(number_match.group(1)) if number_match else 0
-    
-    # Extract narrator
-    narrator_match = re.search(r'Narrated (.*?)\n', hadith_str)
-    narrator = narrator_match.group(1).strip() if narrator_match else ""
-    
-    # Extract book reference
-    book_ref_match = re.search(r'(SAHIH (BUKHARI|MUSLIM).*?)$', hadith_str, re.MULTILINE)
-    book_reference = book_ref_match.group(0).strip() if book_ref_match else ""
-    
-    # Extract hadith text
-    content_start = 0
-    if narrator_match:
-        content_start = narrator_match.end()
-    content_end = book_ref_match.start() if book_ref_match else len(hadith_str)
-    
-    hadith_text = hadith_str[content_start:content_end].strip()
-    
-    # Clean common prefixes
-    hadith_text = re.sub(r'^Narrated .*?\n', '', hadith_text)
-    hadith_text = re.sub(r'^that ', '', hadith_text, flags=re.IGNORECASE)
-    
-    return Hadith(
-        hadith=hadith_text,
-        hadith_number=hadith_number,
-        narrator=narrator,
-        book_reference=book_reference
+    structure_llm = llm.with_structured_output(RequireRetrieval)
+
+    template = PromptTemplate.from_template(
+        """
+            You are an intelligent emotional and spiritual evaluator.
+
+            Your job is to determine whether the user's message would benefit from including Islamic spiritual guidance (Quran or Hadith) in the response.
+
+            Consider the emotional tone, depth, and vulnerability in the message. If the user is expressing emotional pain, confusion, moral struggle, grief, guilt, fear, or searching for hope, meaning, or comfort — even implicitly — return True. In such cases, Quran or Hadith may offer perspective, support, or healing.
+
+            If the message is purely informational, casual, playful, or does not carry emotional or reflective depth, return False.
+
+            **Do NOT require the user to explicitly ask for Islamic guidance.** Your job is to evaluate whether Islamic insight could provide meaningful value in the situation.
+
+            User Query: {user_message}
+
+            Your output should be a single word: `True` or `False`.
+        """
     )
+
+    prompt_template = PromptTemplate(
+        template=template,
+        input_variables=["user_message"]
+    )
+
+    response = structure_llm.invoke(prompt_template)
+
+    logging.info(f"{Fore.CYAN}Requires Retrieval? : {response}{Style.RESET_ALL}")
+
+    state["requires_retrieval"] = response.content
+    return state
 
 
 # function to retrieve quran ayahs
@@ -102,7 +87,6 @@ def retrieve_quran_data(state: AgentState):
 
     logging.info(f"{Fore.GREEN}Retrieved Data: {parsed_ayahs}{Style.RESET_ALL}")
     return state
-
 
 
 #function to retrieve relevant hadith
@@ -144,10 +128,26 @@ def generate_response(state: AgentState):
 
 
     # Fixed prompt template with correct variables
-    template: str = """You are an empathetic therapist and spiritual guide.
-        Your role is to listen, acknowledge the user's feelings, and offer emotional healing and guidance.
-        Always respond with compassion and understanding.
-        Be precise and factual. The response response, apart from Quran and Hadith, should be 2-3 sentence maximum
+    template: str = """
+        You are an empathetic, emotionally intelligent therapist and spiritual guide trained to provide both psychological support and Islamic wisdom.
+
+        Your primary role is to:
+        - Create a safe, compassionate, and non-judgmental environment.
+        - Actively listen and validate the user’s feelings and experiences.
+        - Offer concise, emotionally supportive, and spiritually rooted responses.
+        - Encourage healing through empathy, encouragement, and realistic hope.
+        - Incorporate relevant Quranic Ayahs and authentic Hadith as sources of comfort and insight.
+
+        Guidelines:
+        - Always acknowledge the user's emotions with empathy and warmth.
+        - Try to have conversation instead of directly giving advice
+        - Be genuine, calm, and respectful. Use emotionally validating language (e.g., “That sounds incredibly difficult”).
+        - Offer short, supportive reflections (2-3 sentences maximum) followed by Quranic and Hadith context.
+        - Avoid lecturing or giving rigid advice. Prioritize understanding and emotional resonance.
+        - Use silence and pauses when appropriate (through tone, not literal silence).
+        - Normalize and reassure, while guiding gently toward resilience.
+        - Reflect the user’s deeper concerns if they are emotionally evident.
+        - Maintain professionalism and clear boundaries. Avoid overpromising or making diagnostic claims.
 
         Quran Ayahs:
         {quran_context}
@@ -155,13 +155,14 @@ def generate_response(state: AgentState):
         Hadith:
         {hadith_context}
 
-        Current Question: {input}
+        Current Question:
+        {input}
 
         Previous Conversation:
         {chat_history}
 
-        Your response should be in the json format
     """
+
 
     prompt_template = PromptTemplate(
         template=template,
@@ -197,3 +198,5 @@ def generate_response(state: AgentState):
     state["chat_history"].append({"role": "AI", "content": state["response"].answer})
     
     return state
+
+

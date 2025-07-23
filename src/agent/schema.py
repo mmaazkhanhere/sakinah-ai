@@ -3,6 +3,8 @@ from typing_extensions import TypedDict
 
 from pydantic import BaseModel, Field
 
+class RequireRetrieval(BaseModel):
+    requires_retrieval: bool = Field("Check whether the user query requires retrieval")
 
 class QuranAyah(BaseModel):
     surah_no: int = Field(description="The surah number of the ayah")
@@ -17,8 +19,6 @@ class Hadith(BaseModel):
     narrator: str = Field(description="The narrator of the hadith")
     book_reference: str = Field(description="The book reference of the hadith")
 
-
-
 class AgentResponse(BaseModel):
     answer: str = Field(description="The response of AI which doesn't contain the quran and hadith just the therapy text")
     quran_ayah: QuranAyah = Field(description="The quran ayah")
@@ -26,6 +26,7 @@ class AgentResponse(BaseModel):
 
 class AgentState(TypedDict):
     user_message: str  #the message entered by the user
+    requires_retrieval: bool
     quran_data: list[QuranAyah]
     hadith_data: list[Hadith]
     chat_history: list[Dict[str, str]] # history of chat between the agent and the user

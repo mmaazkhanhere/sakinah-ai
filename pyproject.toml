@@ -1,7 +1,7 @@
 [project]
 name = "sakinah-ai"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.1.1"
+description = "An AI therapist that heals you with Islamic teachings"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
