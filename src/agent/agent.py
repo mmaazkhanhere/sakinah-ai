@@ -1,19 +1,23 @@
 from langgraph.graph import StateGraph, START, END
 
 from .schema import AgentState
-from .nodes import retrieve_quran_data, retrieve_hadith_data, generate_response
+from .nodes import retrieve_quran_data, retrieve_hadith_data, generate_response, requires_retrieval
+from .routing_functions import retrieval_checker_router
 
 def agent(state: AgentState):
     agent_builder = StateGraph(AgentState)
 
-    agent_builder.add_node("Retrieve Quran Data from RAG", retrieve_quran_data)
-    agent_builder.add_node("Retrieve Hadith Data from RAG", retrieve_hadith_data)
+    # Use more precise node names
+    agent_builder.add_node("Assess Guidance Need", requires_retrieval)
+    agent_builder.add_node("Retrieve Quran", retrieve_quran_data)
+    agent_builder.add_node("Retrieve Hadith", retrieve_hadith_data)
     agent_builder.add_node("Generate Response", generate_response)
 
-    agent_builder.add_edge(START, "Retrieve Quran Data from RAG")
-    # agent_builder.add_edge("Retrieve Data from RAG", "Check Data Relevancy")
-    agent_builder.add_edge("Retrieve Quran Data from RAG", "Retrieve Hadith Data from RAG")
-    agent_builder.add_edge("Retrieve Hadith Data from RAG", "Generate Response")
+    agent_builder.add_edge(START, "Assess Guidance Need")
+    agent_builder.add_conditional_edges("Assess Guidance Need", retrieval_checker_router, 
+                                       {"retrieve": "Retrieve Quran", "direct": "Generate Response"})
+    agent_builder.add_edge("Retrieve Quran", "Retrieve Hadith")
+    agent_builder.add_edge("Retrieve Hadith", "Generate Response")
     agent_builder.add_edge("Generate Response", END)
 
     agent = agent_builder.compile()

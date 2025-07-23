@@ -22,7 +22,7 @@ logging.basicConfig(
     format=f'{Fore.BLUE}%(asctime)s{Style.RESET_ALL} - {Fore.GREEN}%(levelname)s{Style.RESET_ALL} - %(message)s'
 )
 
-def required_retrieval(state: AgentState):
+def requires_retrieval(state: AgentState):
     logging.info(f"{Back.BLUE} Required Retrieval Node {Style.RESET_ALL}")
     logging.info(f"{Fore.YELLOW}User Message: {state['user_message']}{Style.RESET_ALL}")
 
@@ -34,36 +34,35 @@ def required_retrieval(state: AgentState):
 
     structure_llm = llm.with_structured_output(RequireRetrieval)
 
-    template = PromptTemplate.from_template(
-        """
-            You are an intelligent emotional and spiritual evaluator.
+    template = """
+        You are an intelligent emotional and spiritual evaluator.
 
-            Your job is to determine whether the user's message would benefit from including Islamic spiritual guidance (Quran or Hadith) in the response.
+        Your job is to determine whether the user's message would benefit from including Islamic spiritual guidance (Quran or Hadith) in the response.
 
-            Consider the emotional tone, depth, and vulnerability in the message. If the user is expressing emotional pain, confusion, moral struggle, grief, guilt, fear, or searching for hope, meaning, or comfort — even implicitly — return True. In such cases, Quran or Hadith may offer perspective, support, or healing.
+        Consider the emotional tone, depth, and vulnerability in the message. If the user is expressing emotional pain, confusion, moral struggle, grief, guilt, fear, or searching for hope, meaning, or comfort — even implicitly — return True. In such cases, Quran or Hadith may offer perspective, support, or healing.
 
-            If the message is purely informational, casual, playful, or does not carry emotional or reflective depth, return False.
+        If the message is purely informational, casual, playful, or does not carry emotional or reflective depth, return False.
 
-            **Do NOT require the user to explicitly ask for Islamic guidance.** Your job is to evaluate whether Islamic insight could provide meaningful value in the situation.
+        **Do NOT require the user to explicitly ask for Islamic guidance.** Your job is to evaluate whether Islamic insight could provide meaningful value in the situation.
 
-            User Query: {user_message}
+        User Query: {user_message}
 
-            Your output should be a single word: `True` or `False`.
-        """
-    )
+        Your output should be a single word: `True` or `False`.
+    """
+    
 
     prompt_template = PromptTemplate(
         template=template,
         input_variables=["user_message"]
     )
 
-    response = structure_llm.invoke(prompt_template)
+    chain = prompt_template | structure_llm
+    response = chain.invoke({"user_message": state["user_message"]})
 
     logging.info(f"{Fore.CYAN}Requires Retrieval? : {response}{Style.RESET_ALL}")
 
-    state["requires_retrieval"] = response.content
+    state["requires_retrieval"] = response.requires_retrieval
     return state
-
 
 # function to retrieve quran ayahs
 def retrieve_quran_data(state: AgentState):
@@ -107,7 +106,7 @@ def retrieve_hadith_data(state: AgentState):
     results = vector_store.similarity_search(query=state["user_message"], k=3)
 
     parsed_hadith = [parse_hadith(doc.page_content) for doc in results]
-    state["quran_data"] = parsed_hadith
+    state["hadith_data"] = parsed_hadith
 
 
     logging.info(f"{Fore.MAGENTA}Retrieved Hadith Data: {parsed_hadith}{Style.RESET_ALL}")
@@ -122,75 +121,133 @@ def generate_response(state: AgentState):
     logging.info(f"{Back.BLUE} Generate Response Node {Style.RESET_ALL}")
 
     user_message: str = state["user_message"]
-    quran_data: list[QuranAyah] = state["quran_data"]
-    hadith_data: list[Hadith] = state["hadith_data"]
+    # quran_data: list[QuranAyah] = state["quran_data"]
+    # hadith_data: list[Hadith] = state["hadith_data"]
     chat_history = state["chat_history"]
+    require_retrieval = state["requires_retrieval"]
+
+    response = None
+
+    if require_retrieval:
+        # Fixed prompt template with correct variables
+        logging.info(f"{Fore.YELLOW}Generating response after retrieval{Style.RESET_ALL}")
+        template: str = """
+            You are an empathetic, emotionally intelligent therapist and spiritual guide trained to provide both psychological support and Islamic wisdom.
+
+            Your primary role is to:
+            - Create a safe, compassionate, and non-judgmental environment.
+            - Actively listen and validate the user’s feelings and experiences.
+            - Offer concise, emotionally supportive, and spiritually rooted responses.
+            - Encourage healing through empathy, encouragement, and realistic hope.
+            - Incorporate relevant Quranic Ayahs and authentic Hadith as sources of comfort and insight.
+
+            Guidelines:
+            - Always acknowledge the user's emotions with empathy and warmth.
+            - Try to have conversation instead of directly giving advice
+            - Be genuine, calm, and respectful. Use emotionally validating language (e.g., “That sounds incredibly difficult”).
+            - Offer short, supportive reflections (2-3 sentences maximum) followed by Quranic and Hadith context.
+            - Avoid lecturing or giving rigid advice. Prioritize understanding and emotional resonance.
+            - Use silence and pauses when appropriate (through tone, not literal silence).
+            - Normalize and reassure, while guiding gently toward resilience.
+            - Reflect the user’s deeper concerns if they are emotionally evident.
+            - Maintain professionalism and clear boundaries. Avoid overpromising or making diagnostic claims.
+
+            Quran Ayahs:
+            {quran_context}
+
+            Hadith:
+            {hadith_context}
+
+            Current Question:
+            {input}
+
+            Previous Conversation:
+            {chat_history}
+
+        """
 
 
-    # Fixed prompt template with correct variables
-    template: str = """
-        You are an empathetic, emotionally intelligent therapist and spiritual guide trained to provide both psychological support and Islamic wisdom.
+        prompt_template = PromptTemplate(
+            template=template,
+            input_variables=["quran_context", "hadith_context", "input", "chat_history"]
+        )
 
-        Your primary role is to:
-        - Create a safe, compassionate, and non-judgmental environment.
-        - Actively listen and validate the user’s feelings and experiences.
-        - Offer concise, emotionally supportive, and spiritually rooted responses.
-        - Encourage healing through empathy, encouragement, and realistic hope.
-        - Incorporate relevant Quranic Ayahs and authentic Hadith as sources of comfort and insight.
+        llm: ChatOpenAI = ChatOpenAI(
+            model="gpt-4o",
+            temperature=0.4,  # Slightly higher for more empathetic responses
+            verbose=True,
+        )
 
-        Guidelines:
-        - Always acknowledge the user's emotions with empathy and warmth.
-        - Try to have conversation instead of directly giving advice
-        - Be genuine, calm, and respectful. Use emotionally validating language (e.g., “That sounds incredibly difficult”).
-        - Offer short, supportive reflections (2-3 sentences maximum) followed by Quranic and Hadith context.
-        - Avoid lecturing or giving rigid advice. Prioritize understanding and emotional resonance.
-        - Use silence and pauses when appropriate (through tone, not literal silence).
-        - Normalize and reassure, while guiding gently toward resilience.
-        - Reflect the user’s deeper concerns if they are emotionally evident.
-        - Maintain professionalism and clear boundaries. Avoid overpromising or making diagnostic claims.
+        structure_llm = llm.with_structured_output(AgentResponse)
 
-        Quran Ayahs:
-        {quran_context}
-
-        Hadith:
-        {hadith_context}
-
-        Current Question:
-        {input}
-
-        Previous Conversation:
-        {chat_history}
-
-    """
-
-
-    prompt_template = PromptTemplate(
-        template=template,
-        input_variables=["quran_context", "hadith_context", "input", "chat_history"]
-    )
-
-    llm: ChatOpenAI = ChatOpenAI(
-        model="gpt-4o",
-        temperature=0.4,  # Slightly higher for more empathetic responses
-        verbose=True,
-    )
-
-    structure_llm = llm.with_structured_output(AgentResponse)
-
-    # Create direct chain without retriever
-    chain = prompt_template | structure_llm
+        chain = prompt_template | structure_llm
     
-    logging.info(f"{Fore.GREEN}Generating response{Style.RESET_ALL}")
-    response: AgentResponse = chain.invoke({
-        "input": user_message,
-        "quran_context": quran_data,
-        "hadith_context": hadith_data,
-        "chat_history": chat_history
-    })
+        logging.info(f"{Fore.GREEN}Generating response{Style.RESET_ALL}")
+        response: AgentResponse = chain.invoke({
+            "input": user_message,
+            "quran_context": state["quran_data"],
+            "hadith_context": state["hadith_data"],
+            "chat_history": chat_history
+        })
 
-    # Extract content from AIMessage
+        logging.info(f"{Fore.GREEN}Response generated: {response}{Style.RESET_ALL}")
+    
+    else:
+        logging.info(f"{Fore.MAGENTA}Generating response without retrieval{Style.RESET_ALL}")
+        template: str = """
+            You are an empathetic, emotionally intelligent therapist and spiritual guide trained to provide both psychological support and Islamic wisdom.
 
-    logging.info(f"{Fore.GREEN}Response generated: {response}{Style.RESET_ALL}")
+            Your primary role is to:
+            - Create a safe, compassionate, and non-judgmental environment.
+            - Actively listen and validate the user’s feelings and experiences.
+            - Offer concise, emotionally supportive, and spiritually rooted responses.
+            - Encourage healing through empathy, encouragement, and realistic hope.
+            - Incorporate relevant Quranic Ayahs and authentic Hadith as sources of comfort and insight.
+
+            Guidelines:
+            - Always acknowledge the user's emotions with empathy and warmth.
+            - Try to have conversation instead of directly giving advice
+            - Be genuine, calm, and respectful. Use emotionally validating language (e.g., “That sounds incredibly difficult”).
+            - Offer short, supportive reflections (2-3 sentences maximum) followed by Quranic and Hadith context.
+            - Avoid lecturing or giving rigid advice. Prioritize understanding and emotional resonance.
+            - Use silence and pauses when appropriate (through tone, not literal silence).
+            - Normalize and reassure, while guiding gently toward resilience.
+            - Reflect the user’s deeper concerns if they are emotionally evident.
+            - Maintain professionalism and clear boundaries. Avoid overpromising or making diagnostic claims.
+
+            Current Question:
+            {input}
+
+            Previous Conversation:
+            {chat_history}
+
+        """
+
+        prompt_template = PromptTemplate(
+            template=template,
+            input_variables=["input", "chat_history"]
+        )
+
+        llm: ChatOpenAI = ChatOpenAI(
+            model="gpt-4o",
+            temperature=0.4,  # Slightly higher for more empathetic responses
+            verbose=True,
+        )
+
+        structure_llm = llm.with_structured_output(AgentResponse)
+
+        # Create direct chain without retriever
+        chain = prompt_template | structure_llm
+        
+        logging.info(f"{Fore.GREEN}Generating response{Style.RESET_ALL}")
+        response: AgentResponse = chain.invoke({
+            "input": user_message,
+            "chat_history": chat_history
+        })
+
+        # Extract content from AIMessage
+
+        logging.info(f"{Fore.GREEN}Response generated: {response}{Style.RESET_ALL}")
     # logging.info(f"\n\n{Fore.GREEN}Answer generated: {response}{Style.RESET_ALL}")
     # Update state
     state["response"] = response
