@@ -20,14 +20,14 @@ class Hadith(BaseModel):
     book_reference: str = Field(description="The book reference of the hadith")
 
 class AgentResponse(BaseModel):
-    answer: str = Field(description="The response of AI which doesn't contain the quran and hadith just the therapy text")
-    quran_ayah: QuranAyah = Field(description="The quran ayah")
-    hadith: Hadith = Field(description="The hadith")
+    answer: str = Field(description="The therapy response without Quran Ayah and Hadith")
+    quran_ayah: QuranAyah | None = Field(description="The quran ayah")
+    hadith: Hadith | None = Field(description="The hadith")
 
 class AgentState(TypedDict):
     user_message: str  #the message entered by the user
     requires_retrieval: bool
-    quran_data: list[QuranAyah]
-    hadith_data: list[Hadith]
+    quran_data: list[QuranAyah] | None
+    hadith_data: list[Hadith] | None
     chat_history: list[Dict[str, str]] # history of chat between the agent and the user
     response: AgentResponse # generated the answer by the LLM
