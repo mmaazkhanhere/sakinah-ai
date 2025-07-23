@@ -107,8 +107,8 @@ def retrieve_quran_data(state: AgentState):
 
 #function to retrieve relevant hadith
 def retrieve_hadith_data(state: AgentState):
-    logging.info(f"{Back.BLUE} Retrieve Hadith Data {Style.RESET_ALL}")
-    logging.info(f"{Fore.CYAN}User Message: {state['user_message']}{Style.RESET_ALL}")
+    logging.info(f"{Back.MAGENTA} Retrieve Hadith Data {Style.RESET_ALL}")
+    logging.info(f"{Fore.MAGENTA}User Message: {state['user_message']}{Style.RESET_ALL}")
 
     pc = pinecone.Pinecone(api_key=os.environ["PINECONE_API_KEY"])
     index = pc.Index("sakinah-app")
@@ -122,13 +122,13 @@ def retrieve_hadith_data(state: AgentState):
 
     results = vector_store.similarity_search(query=state["user_message"], k=3)
 
-    context = [doc.page_content for doc in results]
+    parsed_hadith = [parse_hadith(doc.page_content) for doc in results]
+    state["quran_data"] = parsed_hadith
 
-    logging.info(f"{Fore.CYAN}Retrieved Hadith Data: {context}{Style.RESET_ALL}")
 
-    state["hadith_data"] = context
+    logging.info(f"{Fore.MAGENTA}Retrieved Hadith Data: {parsed_hadith}{Style.RESET_ALL}")
 
-    
+    state["hadith_data"] = parsed_hadith
 
     return state
 
@@ -147,7 +147,7 @@ def generate_response(state: AgentState):
     template: str = """You are an empathetic therapist and spiritual guide.
         Your role is to listen, acknowledge the user's feelings, and offer emotional healing and guidance.
         Always respond with compassion and understanding.
-        Be precise and factual.
+        Be precise and factual. The response response, apart from Quran and Hadith, should be 2-3 sentence maximum
 
         Quran Ayahs:
         {quran_context}
@@ -159,6 +159,8 @@ def generate_response(state: AgentState):
 
         Previous Conversation:
         {chat_history}
+
+        Your response should be in the json format
     """
 
     prompt_template = PromptTemplate(

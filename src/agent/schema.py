@@ -20,7 +20,7 @@ class Hadith(BaseModel):
 
 
 class AgentResponse(BaseModel):
-    answer: str = Field(description="The response of AI")
+    answer: str = Field(description="The response of AI which doesn't contain the quran and hadith just the therapy text")
     quran_ayah: QuranAyah = Field(description="The quran ayah")
     hadith: Hadith = Field(description="The hadith")
 
