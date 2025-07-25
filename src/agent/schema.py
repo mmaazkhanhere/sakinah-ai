@@ -4,7 +4,7 @@ from typing_extensions import TypedDict
 from pydantic import BaseModel, Field
 
 class RequireRetrieval(BaseModel):
-    requires_retrieval: bool = Field("Check whether the user query requires retrieval")
+    requires_retrieval: bool = Field(description="Check whether the user query requires retrieval")
 
 class QuranAyah(BaseModel):
     surah_no: int = Field(description="The surah number of the ayah")

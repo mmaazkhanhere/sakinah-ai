@@ -73,7 +73,7 @@ def requires_retrieval(state: AgentState):
     )
 
     chain = prompt_template | structure_llm
-    response = chain.invoke({"user_message": state["user_message"], "chat_history": chat_history})
+    response: RequireRetrieval = chain.invoke({"user_message": state["user_message"], "chat_history": chat_history})
 
     logging.info(f"{Fore.CYAN}Requires Retrieval? : {response}{Style.RESET_ALL}")
 
